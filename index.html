@@ -3,68 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sitio en Construcción</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #333;
-            text-align: center;
-        }
-        .container {
-            background: white;
-            padding: 3rem 2rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
-            width: 90%;
-        }
-        .icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-        h1 {
-            font-size: 2rem;
-            margin: 0 0 1rem;
-            color: #2c3e50;
-        }
-        p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: #555;
-            margin: 0 0 2rem;
-        }
-        .contact-btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        .contact-btn:hover {
-            background-color: #2980b9;
-        }
-    </style>
+    <title>Metropolitano | Tu centro de encuentro</title>
+    <meta name="description" content="Centro Comercial Metropolitano. Disfruta de la mejor zona bancaria, plazoleta de comidas, cine y más en un solo lugar.">
+    <link rel="icon" type="image/png" href="img/METROPOLITANO-NEGRO.png">
+    <link rel="stylesheet" href="style/main.css">
+    <script src="js/main.js" defer></script>
 </head>
 <body>
-    <div class="container">
-        <div class="icon">🚧</div>
-        <h1>Página en Construcción</h1>
-        <p>Estamos trabajando duro en nuestro nuevo sitio web. ¡Vuelve pronto para ver las novedades!</p>
-        <a href="mailto:info@tudominio.com" class="contact-btn">Contáctanos</a>
-    </div>
+    <!-- Header Navbar -->
+    <header class="header" id="header">
+        <div class="header-container">
+            <a href="/" class="logo" aria-label="Inicio">
+                <img src="img/METROPOLITANO-BLANCO.png" alt="Metropolitano Logo">
+            </a>
+            
+            <!-- Botón de Menú Móvil -->
+            <button class="hamburger" id="hamburger" aria-label="Abrir menú" aria-expanded="false">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+
+            <nav class="navbar">
+                <ul class="nav-links">
+                    <li><a href="#inicio" class="active">Inicio</a></li>
+                    <li><a href="#locales">Locales</a></li>
+                    <li><a href="#servicios">Oficinas</a></li>
+                    <li><a href="#eventos">Sorteos</a></li>
+                    <li><a href="#contacto">Contacto</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero" id="inicio">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <h1>TU CENTRO DE ENCUENTRO EN NEIVA</h1>
+                    <p>La sofisticación y el confort se unen. Vive experiencias únicas todos los días en un entorno inigualable.</p>
+                    <a href="#locales" class="btn-cta">Ver Locales</a>
+                </div>
+                <div class="hero-video">
+                    <div class="video-wrapper">
+                        <div class="video-overlay"></div>
+                        <video src="img/metropolitano_web.mp4" autoplay loop muted playsinline></video>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Módulo Principal: Explora & Kiosco -->
+        <section class="features-section" id="explora">
+            <div class="container layout-grid">
+                <!-- Cards Modulares -->
+                <div class="cards-grid">
+                    <article class="feature-card">
+                        <div class="card-bg"></div>
+                        <div class="card-content">
+                            <div class="icon">🛍️</div>
+                            <h3>Nuevos Locales</h3>
+                            <p>Descubre las marcas exclusivas que se han unido a nuestra familia para ofrecerte lo mejor.</p>
+                        </div>
+                    </article>
+                    
+                    <article class="feature-card events">
+                        <div class="card-bg vertical-garden"></div>
+                        <div class="card-content">
+                            <div class="icon">📅</div>
+                            <h3>Eventos</h3>
+                            <p>Disfruta de nuestra selecta programación cultural y de entretenimiento para toda la familia.</p>
+                        </div>
+                    </article>
+                    
+                    <article class="feature-card map">
+                        <div class="card-bg digital-fountain"></div>
+                        <div class="card-content">
+                            <div class="icon">🗺️</div>
+                            <h3>Mapa</h3>
+                            <p>Ubica fácilmente tus tiendas de lujo, servicios y restaurantes favoritos en nuestro directorio.</p>
+                        </div>
+                    </article>
+                </div>
+
+                <!-- Kiosco Digital Interactivo -->
+                <aside class="kiosk-container">
+                    <div class="kiosk-render">
+                        <div class="kiosk-screen">
+                            <div class="kiosk-header">Directorio Digital</div>
+                            <div class="kiosk-body">
+                                <button class="kiosk-btn">
+                                    <span>🔍</span> Buscar Locales
+                                </button>
+                            </div>
+                        </div>
+                        <div class="kiosk-stand"></div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" id="contacto">
+        <div class="container footer-grid">
+            <div class="footer-column footer-info">
+                <img src="img/METROPOLITANO-BLANCO.png" alt="Metropolitano Logo" class="footer-logo">
+                <p>Tu centro comercial de confianza.</p>
+            </div>
+            <div class="footer-column footer-links">
+                <h4>Enlaces Legales</h4>
+                <ul>
+                    <li><a href="#">Términos y Condiciones</a></li>
+                    <li><a href="#">Política de Privacidad</a></li>
+                </ul>
+            </div>
+            <div class="footer-column footer-social">
+                <h4>Síguenos</h4>
+                <div class="social-icons">
+                    <a href="https://www.facebook.com/ccmetropolitanoneiva" aria-label="Facebook">FB</a>
+                    <a href="https://www.instagram.com/ccmetropolitanoneiva" aria-label="Instagram">IG</a>
+                    <a href="https://www.tiktok.com/@ccmetropolitanoneiva" aria-label="TikTok">TikTok</a>
+                </div>
+            </div>
+            <div class="footer-column footer-copyright">
+                <div class="separator-line"></div>
+                <p>&copy; 2026 Centro Comercial Metropolitano.<br>Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

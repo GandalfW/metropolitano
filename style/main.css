@@ -1,0 +1,655 @@
+/* ==================================================
+   1. VARIABLES DE SISTEMA E IDENTIDAD (Design Tokens)
+   ================================================== */
+:root {
+    --color-primary: #2596be;      /* Azul Turquesa/Cerúleo (Dominante) */
+    --color-secondary: #000000;    /* Negro Puro (Accionable) */
+    --color-accent: #0F4C81;       /* Azul marino profundo (Acento Corporativo) */
+    --color-text: #000000;         /* Negro puro (Texto Principal) */
+    --color-bg: #ffffff;           /* Blanco puro (Fondo General) */
+    --transition: all 0.3s ease;   /* Transición suave estándar */
+    
+    /* Variables para la sección Features (nuevas) */
+    --primary: #6c5ce7;
+    --primary-dark: #5a4ad1;
+    --secondary: #a8a4ff;
+    --accent: #ff7675;
+    --dark: #1a1a2e;
+    --glass: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+}
+
+/* ==================================================
+   2. RESET Y CONFIGURACIONES BASE
+   ================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--color-text);
+    background: linear-gradient(180deg, #f0f2f5 0%, #ffffff 100%);
+    background-attachment: fixed;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+a {
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+ul {
+    list-style: none;
+}
+
+/* ==================================================
+   3. HEADER Y NAVEGACIÓN
+   ================================================== */
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--color-primary);
+    z-index: 1000;
+    transition: var(--transition);
+    padding: 1.25rem 0;
+}
+
+.header.scrolled {
+    padding: 0.75rem 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.logo img {
+    height: 54px;
+    width: auto;
+    display: block;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2.5rem;
+}
+
+.nav-links a {
+    color: var(--color-bg);
+    font-weight: 500;
+    font-size: 1.05rem;
+    position: relative;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: var(--color-secondary);
+}
+
+.hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    z-index: 1001;
+}
+
+.hamburger .bar {
+    width: 25px;
+    height: 3px;
+    background-color: var(--color-bg);
+    transition: var(--transition);
+    border-radius: 2px;
+}
+
+/* ==================================================
+   4. HERO SECTION
+   ================================================== */
+.hero {
+    background-color: var(--color-primary);
+    background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.4)), url('../img/interior-render.jpg');
+    background-size: cover;
+    background-position: center;
+    color: #ffffff;
+    min-height: 80vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 6rem 2rem 2rem;
+}
+
+.hero-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3rem;
+    max-width: 1200px;
+    width: 100%;
+}
+
+.hero-content {
+    flex: 1;
+    max-width: 600px;
+}
+
+.hero-video {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.video-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 550px;
+    -webkit-mask-image: radial-gradient(ellipse, black 65%, transparent 100%);
+    mask-image: radial-gradient(ellipse, black 65%, transparent 100%);
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+.video-wrapper video {
+    width: 100%;
+    display: block;
+}
+
+.hero h1 {
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    margin-bottom: 1.5rem;
+    line-height: 1.1;
+}
+
+.hero p {
+    font-size: 1.25rem;
+    margin-bottom: 2.5rem;
+    opacity: 0.9;
+}
+
+.btn-cta {
+    display: inline-block;
+    background-color: var(--color-secondary);
+    color: #ffffff;
+    padding: 1rem 2.5rem;
+    border-radius: 50px;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.btn-cta:hover {
+    background-color: #333333;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ==================================================
+   5. SERVICIOS / FEATURES
+   ================================================== */
+.services {
+    padding: 6rem 0;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 4rem;
+    color: var(--color-primary);
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+}
+
+.service-card {
+    background-color: #f9fafb;
+    padding: 3rem 2rem;
+    border-radius: 12px;
+    text-align: center;
+    transition: var(--transition);
+    border: 1px solid #eaeaea;
+}
+
+.service-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+    border-color: var(--color-secondary);
+}
+
+.service-card .icon {
+    font-size: 3.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.service-card h3 {
+    color: var(--color-primary);
+    margin-bottom: 1rem;
+    font-size: 1.4rem;
+}
+
+/* ==================================================
+   6. SECCIÓN FEATURES (NUEVA - IMPACTANTE)
+   ================================================== */
+.features-section {
+    background: var(--color-bg);
+    padding: 6rem 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.features-section::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    top: -50%;
+    left: -50%;
+    background: radial-gradient(circle, rgba(108,92,231,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: floatParticles 40s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes floatParticles {
+    from { transform: translate(0, 0); }
+    to { transform: translate(40px, 40px); }
+}
+
+.features-section .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+}
+
+.features-section .layout-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+    align-items: center;
+}
+
+/* Cards Modulares */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    width: 100%;
+}
+
+.feature-card {
+    position: relative;
+    border-radius: 2rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    background: var(--color-primary);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(37, 150, 190, 0.3);
+    border-color: var(--color-primary);
+}
+
+.card-bg {
+    display: none;
+}
+
+.card-content {
+    position: relative;
+    z-index: 2;
+    padding: 2rem 2rem 2rem 2.5rem;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.feature-card .icon {
+    font-size: 3rem;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover .icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.card-content h3 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+}
+
+.card-content p {
+    font-size: 1rem;
+    line-height: 1.5;
+    opacity: 0.9;
+    max-width: 85%;
+}
+
+/* Kiosco Digital 3D */
+.kiosk-container {
+    perspective: 1200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.kiosk-render {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+    transform-style: preserve-3d;
+    transition: transform 0.5s ease;
+    animation: floatKiosk 4s ease-in-out infinite;
+}
+
+@keyframes floatKiosk {
+    0%, 100% { transform: translateY(0) rotateX(2deg); }
+    50% { transform: translateY(-12px) rotateX(4deg); }
+}
+
+.kiosk-screen {
+    background: linear-gradient(145deg, #111122, #0a0a15);
+    border-radius: 2rem 2rem 1rem 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 30px 40px -20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+    border: 1px solid rgba(108,92,231,0.4);
+    backdrop-filter: blur(4px);
+    transform: rotateX(4deg);
+    transition: all 0.3s;
+}
+
+.kiosk-screen:hover {
+    transform: rotateX(0deg) scale(1.02);
+    border-color: var(--primary);
+    box-shadow: 0 0 30px rgba(108,92,231,0.3);
+}
+
+.kiosk-header {
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-align: center;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(108,92,231,0.3);
+    margin-bottom: 1.5rem;
+    letter-spacing: 1px;
+}
+
+.kiosk-body {
+    display: flex;
+    justify-content: center;
+}
+
+.kiosk-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 3rem;
+    color: white;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(108,92,231,0.4);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    backdrop-filter: blur(4px);
+}
+
+.kiosk-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(108,92,231,0.6);
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+}
+
+.kiosk-stand {
+    width: 60%;
+    height: 70px;
+    background: linear-gradient(90deg, #2d2d44, #1a1a2e);
+    margin: -1rem auto 0;
+    border-radius: 0 0 2rem 2rem;
+    box-shadow: 0 15px 20px rgba(0,0,0,0.3);
+    transform: rotateX(6deg);
+    border-left: 1px solid rgba(255,255,255,0.1);
+    border-right: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(108,92,231,0.3);
+}
+
+/* ==================================================
+   7. FOOTER
+   ================================================== */
+.footer {
+    background-color: #0a192f;
+    color: #e2e8f0;
+    padding: 6rem 0 6rem;
+    position: relative;
+}
+
+.footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, #0a192f 0%, #d4af37 50%, #0a192f 100%);
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 4rem;
+    align-items: start;
+}
+
+.footer-logo {
+    height: 55px;
+    margin-bottom: 1.5rem;
+    filter: brightness(0) invert(1);
+}
+
+.footer-column p {
+    color: #94a3b8;
+    font-size: 0.95rem;
+}
+
+.footer-column h4 {
+    margin-bottom: 1.5rem;
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.footer-links ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.footer-links a {
+    color: #94a3b8;
+    transition: all 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: #d4af37;
+    padding-left: 8px;
+}
+
+.social-icons {
+    display: flex;
+    gap: 1rem;
+}
+
+.social-icons a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.social-icons a:hover {
+    background-color: #d4af37;
+    color: #0a192f;
+    border-color: #d4af37;
+    transform: translateY(-3px);
+}
+
+.footer-copyright {
+    display: flex;
+    flex-direction: column;
+}
+
+.separator-line {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, rgba(212, 175, 55, 0.5), transparent);
+    margin-bottom: 1.5rem;
+    margin-top: 0.5rem;
+}
+
+.footer-copyright p {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* ==================================================
+   8. MEDIA QUERIES (RESPONSIVE DESIGN)
+   ================================================== */
+@media (max-width: 1024px) {
+    .cards-grid {
+        order: 2;
+    }
+    
+    .kiosk-container {
+        order: 1;
+    }
+    
+    .card-content p {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .layout-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-container {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .hero-content {
+        max-width: 100%;
+    }
+
+    .hamburger {
+        display: flex;
+    }
+
+    .hamburger.active .bar:nth-child(1) {
+        transform: translateY(8px) rotate(45deg);
+    }
+    
+    .hamburger.active .bar:nth-child(2) {
+        opacity: 0;
+    }
+    
+    .hamburger.active .bar:nth-child(3) {
+        transform: translateY(-8px) rotate(-45deg);
+    }
+
+    .navbar {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 80%;
+        max-width: 350px;
+        height: 100vh;
+        background-color: var(--color-primary);
+        flex-direction: column;
+        padding: 6rem 2rem 2rem;
+        transition: var(--transition);
+        box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .navbar.active {
+        right: 0;
+    }
+
+    .nav-links {
+        flex-direction: column;
+        gap: 2rem;
+        text-align: center;
+    }
+}
+
+@media (max-width: 640px) {
+    .features-section {
+        padding: 3rem 1rem;
+    }
+    
+    .card-content {
+        padding: 1.5rem;
+    }
+    
+    .card-content h3 {
+        font-size: 1.4rem;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px) scale(1.02);
+    }
+}

@@ -1,0 +1,7 @@
+# Ignorar archivos de configuración de base de datos y credenciales
+config/database.php
+
+# Otros archivos y directorios comunes que no deberían subirse a GitHub
+.env
+node_modules/
+vendor/

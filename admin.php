@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':fecha_fin' => $fecha_fin,
                 ':estado' => $estado
             ]);
-            $mensaje = "Sorteo guardado exitosamente en la base de datos.";
+            $mensaje = "Evento guardado exitosamente en la base de datos.";
         } 
         
         // Accion: Guardar Local
@@ -186,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // --- SECCIÓN 1: ESTADÍSTICAS GENERALES ---
                 fputcsv($output, ['--- ESTADISTICAS GENERALES ---']);
-                fputcsv($output, ['Nombre de Sorteo', 'Total Clientes Participantes', 'Total Ventas Acumuladas', 'Total Boletas Generadas']);
+                fputcsv($output, ['Nombre del Evento', 'Total Clientes Participantes', 'Total Ventas Acumuladas', 'Total Boletas/Inscripciones']);
                 
                 $stmtStats = $pdo->prepare("
                     SELECT 
@@ -213,7 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // --- SECCIÓN 2: CLIENTES PARTICIPANTES ---
                 fputcsv($output, ['--- CLIENTES PARTICIPANTES ---']);
-                fputcsv($output, ['Documento', 'Nombre Cliente', 'Ventas Acumuladas', 'Boletas Generadas']);
+                fputcsv($output, ['Documento', 'Nombre Cliente', 'Ventas Acumuladas', 'Boletas/Inscripciones']);
                 
                 $stmtClients = $pdo->prepare("
                     SELECT 
@@ -238,8 +238,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 fputcsv($output, []); // Linea en blanco
                 
                 // --- SECCIÓN 3: FECHAS DE MAYOR REGISTRO ---
-                fputcsv($output, ['--- FECHAS DE MAYOR REGISTRO (BOLETAS) ---']);
-                fputcsv($output, ['Fecha', 'Boletas Generadas']);
+                fputcsv($output, ['--- FECHAS DE MAYOR REGISTRO ---']);
+                fputcsv($output, ['Fecha', 'Registros Generados']);
                 $stmtFechas = $pdo->prepare("
                     SELECT DATE(fecha_generacion) as fecha, COUNT(*) as boletas_generadas
                     FROM boletas
@@ -260,11 +260,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         SELECT m.nombre as marca, COUNT(t.id_transaccion) as transacciones, SUM(t.monto_compra) as total_ventas
                         FROM transacciones_compra t
                         JOIN marcas m ON t.local = m.local
-                        WHERE DATE(t.fecha_compra) BETWEEN (SELECT fecha_inicio FROM sorteos WHERE id_sorteo = ?) AND (SELECT fecha_fin FROM sorteos WHERE id_sorteo = ?)
+                        WHERE t.sorteo = ?
                         GROUP BY t.local
                         ORDER BY total_ventas DESC
                     ");
-                    $stmtMarcasRep->execute([$id_sorteo, $id_sorteo]);
+                    $stmtMarcasRep->execute([$id_sorteo]);
                     $has_marcas = false;
                     fputcsv($output, ['Marca', 'Transacciones Registradas', 'Total en Ventas ($)']);
                     while ($row = $stmtMarcasRep->fetch(PDO::FETCH_ASSOC)) {
@@ -286,6 +286,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit; // Terminar la ejecución aquí para enviar únicamente el CSV al navegador
             } else {
                 $mensaje = "El sorteo seleccionado no existe.";
+            }
+        }
+        
+        // Accion: Enviar Boletas
+        elseif ($_POST['accion'] === 'enviar_boletas') {
+            try {
+                $id_boleta_especifica = isset($_POST['id_boleta']) ? (int)$_POST['id_boleta'] : null;
+                
+                $sql = "
+                    SELECT b.id_boleta, b.codigo_boleta, c.email, c.nombre_completo, s.nombre as nombre_sorteo
+                    FROM boletas b
+                    JOIN clientes c ON b.id_cliente = c.id_cliente
+                    JOIN sorteos s ON b.id_sorteo = s.id_sorteo
+                    WHERE b.estado_envio = 'pendiente' AND c.email IS NOT NULL AND c.email != ''
+                ";
+                
+                if ($id_boleta_especifica) {
+                    $sql .= " AND b.id_boleta = :id_boleta";
+                    $stmtPendientes = $pdo->prepare($sql);
+                    $stmtPendientes->execute([':id_boleta' => $id_boleta_especifica]);
+                } else {
+                    $sql .= " ORDER BY b.fecha_generacion ASC LIMIT 1";
+                    $stmtPendientes = $pdo->query($sql);
+                }
+                
+                $boleta = $stmtPendientes->fetch(PDO::FETCH_ASSOC);
+                
+                if ($boleta) {
+                    $to = $boleta['email'];
+                    $subject = "Tu Boleta/Inscripcion para: " . $boleta['nombre_sorteo'];
+                    
+                    // Construcción del correo en formato HTML simulando un boleto
+                    $message = "
+                    <html>
+                    <head>
+                        <title>Tu Boleta - Centro Comercial Metropolitano</title>
+                        <style>
+                            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; padding: 20px; }
+                            .ticket { background-color: #ffffff; max-width: 500px; margin: 0 auto; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); overflow: hidden; border: 2px dashed #2596be; }
+                            .ticket-header { background-color: #2596be; color: #ffffff; text-align: center; padding: 25px 20px; }
+                            .ticket-header img { max-height: 55px; margin-bottom: 10px; }
+                            .ticket-header h3 { margin: 10px 0 0 0; font-size: 18px; font-weight: 500; letter-spacing: 1px; }
+                            .ticket-body { padding: 30px; text-align: center; }
+                            .ticket-body h2 { color: #0F4C81; margin-top: 0; font-size: 24px; margin-bottom: 20px; }
+                            .code { font-family: monospace; font-size: 32px; font-weight: bold; color: #e74c3c; background-color: #fef2f2; padding: 15px 25px; border-radius: 8px; display: inline-block; margin: 20px 0; border: 2px solid #fecaca; letter-spacing: 4px; }
+                            .ticket-footer { background-color: #f8fafc; padding: 15px; text-align: center; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class='ticket'>
+                            <div class='ticket-header'>
+                                <!-- Asegúrate de cambiar 'https://centrometropolitano.com/' por la URL real de tu sitio cuando pases a producción -->
+                                <img src='https://centrometropolitano.com/img/METROPOLITANO-NEGRO.png' alt='Logo Metropolitano'>
+                                <h3>¡Participa y Gana!</h3>
+                            </div>
+                            <div class='ticket-body'>
+                                <h2>" . htmlspecialchars($boleta['nombre_sorteo']) . "</h2>
+                                <p style='font-size: 16px; color: #334155;'>Hola <strong>" . htmlspecialchars($boleta['nombre_completo']) . "</strong>,</p>
+                                <p style='color: #475569; margin-bottom: 5px;'>Este es tu código oficial de participación:</p>
+                                <div class='code'>" . htmlspecialchars($boleta['codigo_boleta']) . "</div>
+                                <p style='color: #475569; font-size: 16px;'>¡Mucha suerte!</p>
+                            </div>
+                            <div class='ticket-footer'>
+                                &copy; " . date('Y') . " Centro Comercial Metropolitano.<br>Todos los derechos reservados.
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                    ";
+                    
+                    // Cabeceras necesarias para el envío de correos HTML
+                    $headers = "MIME-Version: 1.0" . "\r\n";
+                    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                    $headers .= "From: Centro Comercial Metropolitano <noreply@metropolitano.com>" . "\r\n";
+                    
+                    // Intentar enviar el correo (Requiere servidor SMTP configurado en XAMPP o Hosting)
+                    $exito = @mail($to, $subject, $message, $headers);
+                    // NOTA: Para probar en local (XAMPP) sin un servidor de correo real configurado, descomenta la siguiente línea:
+                    // $exito = true; 
+                    
+                    $nuevo_estado = $exito ? 'enviado' : 'fallido';
+                    $stmtUpdate = $pdo->prepare("UPDATE boletas SET estado_envio = ?, fecha_envio = NOW() WHERE id_boleta = ?");
+                    $stmtUpdate->execute([$nuevo_estado, $boleta['id_boleta']]);
+                    
+                    if ($exito) {
+                        $mensaje = "Boleta " . $boleta['codigo_boleta'] . " enviada con éxito a " . htmlspecialchars($to) . ".";
+                    } else {
+                        $mensaje = "Error al enviar la boleta " . $boleta['codigo_boleta'] . " a " . htmlspecialchars($to) . ". (Marcada como fallida).";
+                    }
+                } else {
+                    $mensaje = "No se encontraron boletas pendientes válidas para enviar.";
+                }
+            } catch (PDOException $e) {
+                $mensaje = "Error al procesar el envío: " . $e->getMessage();
             }
         }
     }
@@ -407,28 +501,28 @@ try {
 
             <!-- Ingreso de Sorteos -->
             <div class="admin-card">
-                <h2 style="margin-bottom: 1.5rem; color: var(--color-accent);">Crear Nuevo Sorteo</h2>
+                <h2 style="margin-bottom: 1.5rem; color: var(--color-accent);">Crear Nuevo Sorteo o Torneo</h2>
                 <form action="admin.php" method="POST">
                     <input type="hidden" name="accion" value="guardar_sorteo">
                     
                     <div class="form-group">
-                        <label for="nombre" style="font-weight: 600;">Nombre del Sorteo</label>
-                        <input type="text" id="nombre" name="nombre" class="form-control" required placeholder="Ej: Gran Sorteo Aniversario">
+                        <label for="nombre" style="font-weight: 600;">Nombre del Evento</label>
+                        <input type="text" id="nombre" name="nombre" class="form-control" required placeholder="Ej: Sorteo de Fin de Año, Torneo de eSports">
                     </div>
                     
                     <div class="form-group">
-                        <label for="premio" style="font-weight: 600;">Premio a Entregar</label>
-                        <input type="text" id="premio" name="premio" class="form-control" required placeholder="Ej: Vehículo 0KM">
+                        <label for="premio" style="font-weight: 600;">Premio a Entregar / Concepto</label>
+                        <input type="text" id="premio" name="premio" class="form-control" required placeholder="Ej: Vehículo 0KM, Inscripción">
                     </div>
                     
                     <div class="form-group">
-                        <label for="condicion_numerica" style="font-weight: 600;">Condición Numérica (Monto Requerido $)</label>
+                        <label for="condicion_numerica" style="font-weight: 600;">Condición Numérica (Monto Requerido o Costo de Inscripción $)</label>
                         <input type="number" id="condicion_numerica" name="condicion_numerica" class="form-control" required min="0" step="0.01" placeholder="Ej: 100000">
                     </div>
                     
                     <div class="form-group">
-                        <label for="condicion_texto" style="font-weight: 600;">Condición en Texto (Descripción)</label>
-                        <textarea id="condicion_texto" name="condicion_texto" class="form-control" required rows="2" placeholder="Ej: Por cada $100.000 en compras..."></textarea>
+                        <label for="condicion_texto" style="font-weight: 600;">Condición en Texto (Detalles)</label>
+                        <textarea id="condicion_texto" name="condicion_texto" class="form-control" required rows="2" placeholder="Ej: Por cada $100.000 en compras, o Valor total de inscripción..."></textarea>
                     </div>
                     
                     <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
@@ -444,25 +538,25 @@ try {
                     
                     <div class="form-group" style="margin-bottom: 1.5rem;">
                         <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
-                            <input type="checkbox" name="estado" value="1" checked> Marcar Sorteo como Activo
+                            <input type="checkbox" name="estado" value="1" checked> Marcar Evento como Activo
                         </label>
                     </div>
                     
-                    <button type="submit" class="btn-cta" style="width: 100%; border: none; cursor: pointer;">Guardar Sorteo</button>
+                    <button type="submit" class="btn-cta" style="width: 100%; border: none; cursor: pointer;">Guardar Evento</button>
                 </form>
             </div>
 
             <!-- Descargar Informes -->
             <div class="admin-card">
                 <h2 style="margin-bottom: 1.5rem; color: var(--color-accent);">Informes de Campaña</h2>
-                <p style="margin-bottom: 1.5rem; color: #64748b; font-size: 0.95rem;">Descarga un archivo CSV (Excel) con clientes participantes, fechas de mayor registro, marcas más vendidas y estadísticas de éxito.</p>
+                <p style="margin-bottom: 1.5rem; color: #64748b; font-size: 0.95rem;">Descarga un archivo CSV (Excel) con clientes participantes/inscritos, fechas de mayor registro, marcas más vendidas y estadísticas.</p>
                 <form action="admin.php" method="POST">
                     <input type="hidden" name="accion" value="descargar_informe">
                     
                     <div class="form-group">
-                        <label for="id_sorteo_informe" style="font-weight: 600;">Selecciona el Sorteo a Exportar</label>
+                        <label for="id_sorteo_informe" style="font-weight: 600;">Selecciona el Evento a Exportar</label>
                         <select id="id_sorteo_informe" name="id_sorteo" class="form-control" required>
-                            <option value="">-- Elige un sorteo --</option>
+                            <option value="">-- Elige un evento --</option>
                             <?php foreach ($sorteos as $sorteo): ?>
                                 <option value="<?php echo htmlspecialchars($sorteo['id_sorteo']); ?>"><?php echo htmlspecialchars($sorteo['nombre']); ?></option>
                             <?php endforeach; ?>
@@ -472,11 +566,67 @@ try {
                     <button type="submit" class="btn-cta" style="width: 100%; border: none; cursor: pointer; margin-top: 1rem; background-color: #10b981;">Descargar CSV</button>
                 </form>
             </div>
+
+            <!-- Enviar Boletas -->
+            <div class="admin-card">
+                <h2 style="margin-bottom: 1.5rem; color: var(--color-accent);">Envío de Boletas Digitales</h2>
+                <p style="margin-bottom: 1.5rem; color: #64748b; font-size: 0.95rem;">Envía por correo electrónico los códigos a los clientes con boletas pendientes. (Requiere configuración SMTP).</p>
+                
+                <?php
+                $pendientes = 0;
+                $lista_pendientes = [];
+                try {
+                    $stmtP = $pdo->query("SELECT COUNT(*) FROM boletas WHERE estado_envio = 'pendiente'");
+                    $pendientes = $stmtP->fetchColumn();
+                    
+                    $stmtLista = $pdo->query("
+                        SELECT b.id_boleta, b.codigo_boleta, c.email
+                        FROM boletas b
+                        JOIN clientes c ON b.id_cliente = c.id_cliente
+                        WHERE b.estado_envio = 'pendiente' AND c.email IS NOT NULL AND c.email != ''
+                        ORDER BY b.fecha_generacion ASC
+                        LIMIT 5
+                    ");
+                    $lista_pendientes = $stmtLista->fetchAll(PDO::FETCH_ASSOC);
+                } catch (PDOException $e) {}
+                ?>
+                
+                <div style="background-color: #f8fafc; padding: 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; text-align: center;">
+                    <span style="font-size: 2rem; font-weight: bold; color: var(--color-primary); display: block;"><?php echo $pendientes; ?></span>
+                    <span style="color: #64748b; font-size: 0.9rem;">Boletas Pendientes de Envío Totales</span>
+                </div>
+                
+                <?php if (count($lista_pendientes) > 0): ?>
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="font-size: 1rem; color: var(--color-accent); margin-bottom: 0.8rem;">Próximas a enviar:</h3>
+                        <ul style="list-style: none; padding: 0; margin: 0; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden;">
+                            <?php foreach ($lista_pendientes as $p): ?>
+                                <li style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1rem; border-bottom: 1px solid #e2e8f0; background: #fff;">
+                                    <div style="line-height: 1.2;">
+                                        <strong style="color: var(--color-primary); font-size: 0.95rem;"><?php echo htmlspecialchars($p['codigo_boleta']); ?></strong><br>
+                                        <span style="color: #64748b; font-size: 0.85rem;"><?php echo htmlspecialchars($p['email']); ?></span>
+                                    </div>
+                                    <form action="admin.php" method="POST" style="margin: 0;">
+                                        <input type="hidden" name="accion" value="enviar_boletas">
+                                        <input type="hidden" name="id_boleta" value="<?php echo $p['id_boleta']; ?>">
+                                        <button type="submit" class="btn-cta" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 0.3rem;">Enviar a éste</button>
+                                    </form>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+                
+                <form action="admin.php" method="POST">
+                    <input type="hidden" name="accion" value="enviar_boletas">
+                    <button type="submit" class="btn-cta" style="width: 100%; border: none; background-color: #3b82f6;" <?php echo count($lista_pendientes) == 0 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : 'style="cursor: pointer;"'; ?>>Enviar Siguiente Automáticamente</button>
+                </form>
+            </div>
         </div>
 
         <!-- Visualización de Datos: Tabla de Sorteos -->
         <div class="admin-card" style="margin-bottom: 3rem; overflow-x: auto;">
-            <h2 style="margin-bottom: 1.5rem; color: var(--color-accent);">Sorteos Registrados en la Base de Datos</h2>
+            <h2 style="margin-bottom: 1.5rem; color: var(--color-accent);">Sorteos y Torneos Registrados</h2>
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -510,7 +660,7 @@ try {
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" style="text-align: center; padding: 2rem;">No hay sorteos registrados aún en la base de datos.</td>
+                            <td colspan="7" style="text-align: center; padding: 2rem;">No hay eventos registrados aún en la base de datos.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>

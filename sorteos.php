@@ -12,7 +12,7 @@ try {
 } catch (PDOException $e) {
 }
 
-// Cargar los sorteos activos desde la base de datos para la información y el formulario
+// Cargar los sorteos/torneos activos desde la base de datos para la información y el formulario
 $sorteos_activos = [];
 try {
     $stmtSorteos = $pdo->query("SELECT * FROM sorteos WHERE estado = 1 ORDER BY nombre ASC");
@@ -66,8 +66,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         // 2. REGISTRAR TRANSACCIÓN DE COMPRA
-        $stmtTrans = $pdo->prepare("INSERT INTO transacciones_compra (id_cliente, monto_compra, local) VALUES (?, ?, ?)");
-        $stmtTrans->execute([$id_cliente, $valor_factura, $local]);
+        $stmtTrans = $pdo->prepare("INSERT INTO transacciones_compra (id_cliente, monto_compra, local, sorteo) VALUES (?, ?, ?, ?)");
+        $stmtTrans->execute([$id_cliente, $valor_factura, $local, $id_sorteo]);
 
         // 3. ACTUALIZAR ACUMULADO
         $stmtAcum = $pdo->prepare("SELECT id_acumulado, monto_acumulado FROM acumulado_clientes WHERE id_cliente = ? AND id_sorteo = ?");
@@ -117,10 +117,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $mensaje = "¡Registro exitoso! Tu factura ha sido validada.";
         if ($boletas_generadas > 0) {
-            $mensaje .= " ¡Felicidades! Has generado " . $boletas_generadas . " boleta(s) nueva(s).";
+            $mensaje .= " ¡Felicidades! Has generado " . $boletas_generadas . " boleta(s)/inscripción(es) nueva(s).";
         } else if (isset($condicion)) {
             $faltante = $condicion - fmod($nuevo_monto_acumulado, $condicion);
-            $mensaje .= " Sigue comprando. Te faltan $" . number_format($faltante, 2) . " para tu próxima boleta.";
+            $mensaje .= " Sigue comprando. Te faltan $" . number_format($faltante, 2) . " para tu próxima boleta o inscripción.";
         }
 
     } catch (Exception $e) {
@@ -135,8 +135,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sorteos | Metropolitano</title>
-    <meta name="description" content="Participa en los espectaculares sorteos del Centro Comercial Metropolitano registrando tus facturas de compra.">
+    <title>Sorteos y Torneos | Metropolitano</title>
+    <meta name="description" content="Participa en los espectaculares sorteos o inscríbete en torneos del Centro Comercial Metropolitano registrando tus facturas de compra.">
     <link rel="icon" type="image/png" href="img/METROPOLITANO-NEGRO.png">
     <link rel="stylesheet" href="style/main.css">
     <script src="js/main.js" defer></script>
@@ -162,7 +162,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <li><a href="index.html#inicio">Inicio</a></li>
                     <li><a href="index.html#locales">Locales</a></li>
                     <li><a href="index.html#servicios">Oficinas</a></li>
-                    <li><a href="sorteos.php" class="active">Sorteos</a></li>
+                    <li><a href="sorteos.php" class="active">Sorteos y Torneos</a></li>
                     <li><a href="#contacto">Contacto</a></li>
                 </ul>
             </nav>
@@ -174,7 +174,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <section class="hero-sorteos">
             <div class="container">
                 <h1>Participa y Gana</h1>
-                <p>Registra tus facturas de compra y participa en nuestros espectaculares sorteos de temporada.</p>
+                <p>Registra tus facturas de compra para participar en sorteos o inscribirte en nuestros torneos de temporada.</p>
             </div>
         </section>
 
@@ -304,9 +304,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <h3 style="color: var(--color-primary); margin-bottom: 1rem; font-size: 1.1rem;">Detalles de la Compra</h3>
 
                         <div class="form-group">
-                            <label for="sorteo">¿En qué sorteo deseas aplicar?</label>
+                        <label for="sorteo">¿En qué evento deseas aplicar?</label>
                             <select id="sorteo" name="sorteo" class="form-control" required>
-                                <option value="">-- Selecciona un sorteo --</option>
+                            <option value="">-- Selecciona un evento --</option>
                                 <?php foreach ($sorteos_activos as $sorteo_activo): ?>
                                     <option value="<?php echo htmlspecialchars($sorteo_activo['id_sorteo']); ?>"><?php echo htmlspecialchars($sorteo_activo['nombre'] . ' - Premio: ' . $sorteo_activo['premio']); ?></option>
                                 <?php endforeach; ?>

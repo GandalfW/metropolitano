@@ -100,20 +100,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $condicion_texto = $_POST['condicion_texto'];
             $fecha_inicio = $_POST['fecha_inicio'];
             $fecha_fin = $_POST['fecha_fin'];
+            $tipo_sorteo = $_POST['tipo_sorteo'];
+            $equipo_1 = ($tipo_sorteo === 'polla') ? $_POST['equipo_1'] : null;
+            $equipo_2 = ($tipo_sorteo === 'polla') ? $_POST['equipo_2'] : null;
+            $fecha_partido = ($tipo_sorteo === 'polla' && !empty($_POST['fecha_partido'])) ? $_POST['fecha_partido'] : null;
             $estado = isset($_POST['estado']) ? 1 : 0;
 
-            $sql = "INSERT INTO sorteos (nombre, premio, condicion_numerica, condicion_texto, fecha_inicio, fecha_fin, estado) 
-                    VALUES (:nombre, :premio, :condicion_numerica, :condicion_texto, :fecha_inicio, :fecha_fin, :estado)";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
+            $params = [
                 ':nombre' => $nombre,
                 ':premio' => $premio,
+                ':tipo_sorteo' => $tipo_sorteo,
                 ':condicion_numerica' => $condicion_numerica,
                 ':condicion_texto' => $condicion_texto,
                 ':fecha_inicio' => $fecha_inicio,
                 ':fecha_fin' => $fecha_fin,
                 ':estado' => $estado
-            ]);
+            ];
+
+            if ($tipo_sorteo === 'polla') {
+                $sql = "INSERT INTO sorteos (nombre, premio, tipo_sorteo, condicion_numerica, condicion_texto, fecha_inicio, fecha_fin, estado, equipo_1, equipo_2, fecha_partido) 
+                        VALUES (:nombre, :premio, :tipo_sorteo, :condicion_numerica, :condicion_texto, :fecha_inicio, :fecha_fin, :estado, :equipo_1, :equipo_2, :fecha_partido)";
+                $params[':equipo_1'] = $equipo_1;
+                $params[':equipo_2'] = $equipo_2;
+                $params[':fecha_partido'] = $fecha_partido;
+            } else {
+                $sql = "INSERT INTO sorteos (nombre, premio, tipo_sorteo, condicion_numerica, condicion_texto, fecha_inicio, fecha_fin, estado) 
+                        VALUES (:nombre, :premio, :tipo_sorteo, :condicion_numerica, :condicion_texto, :fecha_inicio, :fecha_fin, :estado)";
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
             $mensaje = "Evento guardado exitosamente en la base de datos.";
         } 
         
@@ -163,8 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         elseif ($_POST['accion'] === 'descargar_informe') {
             $id_sorteo = $_POST['id_sorteo'];
             
-            // Obtener el nombre del sorteo
-            $stmt = $pdo->prepare("SELECT nombre FROM sorteos WHERE id_sorteo = ?");
+            // Obtener el nombre y tipo del sorteo
+            $stmt = $pdo->prepare("SELECT nombre, tipo_sorteo, equipo_1, equipo_2 FROM sorteos WHERE id_sorteo = ?");
             $stmt->execute([$id_sorteo]);
             $sorteo = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -280,6 +296,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 } catch (PDOException $e) {
                     fputcsv($output, ['(Aviso) No se pudo procesar esta seccion.', 'Asegúrese de que la columna "local" exista en la tabla "transacciones_compra".']);
+                }
+
+                // --- SECCIÓN 5: PREDICCIONES DE LA POLLA (SI APLICA) ---
+                if ($sorteo && $sorteo['tipo_sorteo'] === 'polla') {
+                    fputcsv($output, []); // Linea en blanco
+                    fputcsv($output, ['--- PREDICCIONES DE LA POLLA ---']);
+                    
+                    // Usar los nombres de los equipos del sorteo para las cabeceras
+                    $header_equipo_1 = !empty($sorteo['equipo_1']) ? 'Marcador ' . $sorteo['equipo_1'] : 'Marcador Equipo 1';
+                    $header_equipo_2 = !empty($sorteo['equipo_2']) ? 'Marcador ' . $sorteo['equipo_2'] : 'Marcador Equipo 2';
+                    
+                    fputcsv($output, ['Documento', 'Nombre Cliente', $header_equipo_1, $header_equipo_2, 'Fecha de Prediccion']);
+                    
+                    $stmtPolla = $pdo->prepare("
+                        SELECT 
+                            c.num_documento, 
+                            c.nombre_completo, 
+                            p.marcador_equipo_1,
+                            p.marcador_equipo_2,
+                            p.fecha_prediccion
+                        FROM predicciones_polla p
+                        JOIN clientes c ON p.id_cliente = c.id_cliente
+                        WHERE p.id_sorteo = ?
+                        ORDER BY p.fecha_prediccion ASC
+                    ");
+                    $stmtPolla->execute([$id_sorteo]);
+                    
+                    while ($row = $stmtPolla->fetch(PDO::FETCH_ASSOC)) {
+                        fputcsv($output, [
+                            $row['num_documento'], $row['nombre_completo'], $row['marcador_equipo_1'], $row['marcador_equipo_2'], $row['fecha_prediccion']
+                        ]);
+                    }
                 }
 
                 fclose($output);
@@ -506,6 +554,14 @@ try {
                     <input type="hidden" name="accion" value="guardar_sorteo">
                     
                     <div class="form-group">
+                        <label for="tipo_sorteo" style="font-weight: 600;">Tipo de Evento</label>
+                        <select id="tipo_sorteo" name="tipo_sorteo" class="form-control" required onchange="togglePollaFields()">
+                            <option value="compras" selected>Sorteo por Compras</option>
+                            <option value="polla">Polla Futbolera</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
                         <label for="nombre" style="font-weight: 600;">Nombre del Evento</label>
                         <input type="text" id="nombre" name="nombre" class="form-control" required placeholder="Ej: Sorteo de Fin de Año, Torneo de eSports">
                     </div>
@@ -513,6 +569,21 @@ try {
                     <div class="form-group">
                         <label for="premio" style="font-weight: 600;">Premio a Entregar / Concepto</label>
                         <input type="text" id="premio" name="premio" class="form-control" required placeholder="Ej: Vehículo 0KM, Inscripción">
+                    </div>
+
+                    <div id="polla_fields" style="display: none; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                            <div style="flex: 1;">
+                                <label for="equipo_1" style="font-weight: 600;">Equipo 1</label>
+                                <input type="text" id="equipo_1" name="equipo_1" class="form-control" placeholder="Ej: Real Madrid">
+                            </div>
+                            <div style="flex: 1;">
+                                <label for="equipo_2" style="font-weight: 600;">Equipo 2</label>
+                                <input type="text" id="equipo_2" name="equipo_2" class="form-control" placeholder="Ej: FC Barcelona">
+                            </div>
+                        </div>
+                        <label for="fecha_partido" style="font-weight: 600;">Fecha y Hora del Partido</label>
+                        <input type="datetime-local" id="fecha_partido" name="fecha_partido" class="form-control">
                     </div>
                     
                     <div class="form-group">
@@ -709,5 +780,25 @@ try {
             </table>
         </div>
     </main>
+
+    <script>
+        function togglePollaFields() {
+            const tipo = document.getElementById('tipo_sorteo').value;
+            const pollaFields = document.getElementById('polla_fields');
+            const equipo1 = document.getElementById('equipo_1');
+            const equipo2 = document.getElementById('equipo_2');
+            const fechaPartido = document.getElementById('fecha_partido');
+
+            if (tipo === 'polla') {
+                pollaFields.style.display = 'block';
+                equipo1.required = true;
+                equipo2.required = true;
+            } else {
+                pollaFields.style.display = 'none';
+                equipo1.required = false;
+                equipo2.required = false;
+            }
+        }
+    </script>
 </body>
 </html>

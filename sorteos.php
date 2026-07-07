@@ -15,7 +15,7 @@ try {
 // Cargar los sorteos/torneos activos desde la base de datos para la información y el formulario
 $sorteos_activos = [];
 try {
-    $stmtSorteos = $pdo->query("SELECT * FROM sorteos WHERE estado = 1 ORDER BY nombre ASC");
+    $stmtSorteos = $pdo->query("SELECT id_sorteo, nombre, premio, tipo_sorteo, equipo_1, equipo_2, condicion_texto, fecha_fin FROM sorteos WHERE estado = 1 ORDER BY nombre ASC");
     $sorteos_activos = $stmtSorteos->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
 }
@@ -68,6 +68,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // 2. REGISTRAR TRANSACCIÓN DE COMPRA
         $stmtTrans = $pdo->prepare("INSERT INTO transacciones_compra (id_cliente, monto_compra, local, sorteo) VALUES (?, ?, ?, ?)");
         $stmtTrans->execute([$id_cliente, $valor_factura, $local, $id_sorteo]);
+        $id_transaccion = $pdo->lastInsertId();
+
+        // 2.1. SI ES POLLA, REGISTRAR PREDICCIÓN
+        if (isset($_POST['es_polla']) && $_POST['es_polla'] == '1') {
+            $marcador_1 = (int)$_POST['marcador_equipo_1'];
+            $marcador_2 = (int)$_POST['marcador_equipo_2'];
+
+            // Validar que el cliente no haya participado ya en esta polla
+            $stmtCheckPolla = $pdo->prepare("SELECT id_prediccion FROM predicciones_polla WHERE id_cliente = ? AND id_sorteo = ?");
+            $stmtCheckPolla->execute([$id_cliente, $id_sorteo]);
+            $prediccion_existente = $stmtCheckPolla->fetch();
+
+            if ($prediccion_existente) {
+                throw new Exception("Ya has registrado una predicción para este evento. Solo se permite una participación por persona.");
+            }
+
+            $stmtPolla = $pdo->prepare("INSERT INTO predicciones_polla (id_sorteo, id_cliente, id_transaccion, marcador_equipo_1, marcador_equipo_2) VALUES (?, ?, ?, ?, ?)");
+            $stmtPolla->execute([$id_sorteo, $id_cliente, $id_transaccion, $marcador_1, $marcador_2]);
+        }
 
         // 3. ACTUALIZAR ACUMULADO
         $stmtAcum = $pdo->prepare("SELECT id_acumulado, monto_acumulado FROM acumulado_clientes WHERE id_cliente = ? AND id_sorteo = ?");
@@ -192,7 +211,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <div class="raffle-card">
                                 <h3>🎁 <?php echo htmlspecialchars($sorteo_activo['nombre']); ?></h3>
                                 <p><strong>Premio:</strong> <?php echo htmlspecialchars($sorteo_activo['premio']); ?></p>
-                                <p><strong>Condición:</strong> <?php echo htmlspecialchars($sorteo_activo['condicion_texto']); ?></p>
+                                <div class="raffle-condition"><strong>Condición:</strong><br><?php echo nl2br(htmlspecialchars($sorteo_activo['condicion_texto'])); ?></div>
                                 <p><strong>Vigencia:</strong> Hasta el <?php echo htmlspecialchars($sorteo_activo['fecha_fin']); ?></p>
                             </div>
                         <?php endforeach; ?>
@@ -307,10 +326,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <label for="sorteo">¿En qué evento deseas aplicar?</label>
                             <select id="sorteo" name="sorteo" class="form-control" required>
                             <option value="">-- Selecciona un evento --</option>
-                                <?php foreach ($sorteos_activos as $sorteo_activo): ?>
-                                    <option value="<?php echo htmlspecialchars($sorteo_activo['id_sorteo']); ?>"><?php echo htmlspecialchars($sorteo_activo['nombre'] . ' - Premio: ' . $sorteo_activo['premio']); ?></option>
+                                <?php foreach ($sorteos_activos as $s): ?>
+                                    <option 
+                                        value="<?php echo htmlspecialchars($s['id_sorteo']); ?>"
+                                        data-tipo="<?php echo htmlspecialchars($s['tipo_sorteo']); ?>"
+                                        data-equipo1="<?php echo htmlspecialchars($s['equipo_1'] ?? ''); ?>"
+                                        data-equipo2="<?php echo htmlspecialchars($s['equipo_2'] ?? ''); ?>">
+                                        <?php echo htmlspecialchars($s['nombre'] . ' - Premio: ' . $s['premio']); ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+
+                        <!-- Campos para la Polla -->
+                        <div id="campos_polla" style="display: none; background-color: #f8fafc; border: 2px solid var(--color-primary); padding: 1.5rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                            <h3 style="color: var(--color-accent); margin-top: 0; margin-bottom: 1rem; text-align: center;">Ingresa tu Marcador</h3>
+                            <input type="hidden" name="es_polla" id="es_polla_hidden" value="0">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem;">
+                                <div style="text-align: center; flex: 1;">
+                                    <label for="marcador_equipo_1" id="label_equipo_1" style="font-weight: bold; display: block; margin-bottom: 0.5rem;">Equipo 1</label>
+                                    <input type="number" name="marcador_equipo_1" id="marcador_equipo_1" class="form-control" min="0" max="99" style="text-align: center; font-size: 1.5rem; padding: 0.5rem;">
+                                </div>
+                                <span style="font-size: 2rem; font-weight: bold; color: var(--color-accent);">vs</span>
+                                <div style="text-align: center; flex: 1;">
+                                    <label for="marcador_equipo_2" id="label_equipo_2" style="font-weight: bold; display: block; margin-bottom: 0.5rem;">Equipo 2</label>
+                                    <input type="number" name="marcador_equipo_2" id="marcador_equipo_2" class="form-control" min="0" max="99" style="text-align: center; font-size: 1.5rem; padding: 0.5rem;">
+                                </div>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -399,6 +441,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             // Establecer el estado inicial cuando cargue la página
             toggleCamposNuevos();
+
+            // Lógica para mostrar campos de la polla
+            const sorteoSelect = document.getElementById('sorteo');
+            const camposPolla = document.getElementById('campos_polla');
+            const esPollaHidden = document.getElementById('es_polla_hidden');
+            const marcador1Input = document.getElementById('marcador_equipo_1');
+            const marcador2Input = document.getElementById('marcador_equipo_2');
+
+            sorteoSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const tipo = selectedOption.getAttribute('data-tipo');
+
+                if (tipo === 'polla') {
+                    document.getElementById('label_equipo_1').textContent = selectedOption.getAttribute('data-equipo1');
+                    document.getElementById('label_equipo_2').textContent = selectedOption.getAttribute('data-equipo2');
+                    camposPolla.style.display = 'block';
+                    esPollaHidden.value = '1';
+                    marcador1Input.required = true;
+                    marcador2Input.required = true;
+                } else {
+                    camposPolla.style.display = 'none';
+                    esPollaHidden.value = '0';
+                    marcador1Input.required = false;
+                    marcador2Input.required = false;
+                }
+            });
         });
     </script>
 </body>

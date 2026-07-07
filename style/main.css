@@ -756,3 +756,13 @@ ul {
         grid-template-columns: 1fr;
     }
 }
+
+.raffle-condition {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    border-left: 4px solid rgba(255, 255, 255, 0.5);
+}

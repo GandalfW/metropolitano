@@ -262,8 +262,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                             <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
                                 <div style="flex: 1;">
-                                    <label for="fecha_nacimiento" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--color-accent); font-size: 0.95rem;">Fecha de Nacimiento</label>
-                                    <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" class="form-control">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--color-accent); font-size: 0.95rem;">Fecha de Nacimiento</label>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <select id="dob_day" class="form-control" style="flex: 1;"><option value="">Día</option></select>
+                                        <select id="dob_month" class="form-control" style="flex: 2;">
+                                            <option value="">Mes</option>
+                                            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                                        </select>
+                                        <select id="dob_year" class="form-control" style="flex: 1.5;"><option value="">Año</option></select>
+                                    </div>
+                                    <input type="hidden" id="fecha_nacimiento" name="fecha_nacimiento">
                                 </div>
                                 <div style="flex: 1;">
                                     <label for="genero" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--color-accent); font-size: 0.95rem;">Género</label>
@@ -467,6 +475,71 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     marcador2Input.required = false;
                 }
             });
+
+            // Lógica para los selectores de fecha de nacimiento
+            const daySelect = document.getElementById('dob_day');
+            const monthSelect = document.getElementById('dob_month');
+            const yearSelect = document.getElementById('dob_year');
+            const hiddenDateInput = document.getElementById('fecha_nacimiento');
+
+            // 1. Poblar años y configurar estado inicial
+            const currentYear = new Date().getFullYear();
+            yearSelect.innerHTML = '<option value="">Año</option>'; // Reset
+            for (let i = currentYear; i >= currentYear - 100; i--) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                yearSelect.appendChild(option);
+            }
+            monthSelect.disabled = true;
+            daySelect.disabled = true;
+
+            // 2. Función para actualizar meses (se activa al cambiar el año)
+            function updateMonths() {
+                const year = yearSelect.value;
+                if (year) {
+                    monthSelect.disabled = false;
+                } else {
+                    monthSelect.disabled = true;
+                    monthSelect.value = "";
+                }
+                updateDays(); // Llama a updateDays para resetearlo si es necesario
+            }
+
+            // 3. Función para actualizar días (se activa al cambiar mes o año)
+            function updateDays() {
+                const year = parseInt(yearSelect.value, 10);
+                const month = parseInt(monthSelect.value, 10);
+                
+                daySelect.innerHTML = '<option value="">Día</option>'; // Siempre resetea los días
+
+                if (year && month) { // Solo poblar si hay año Y mes
+                    daySelect.disabled = false;
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    for (let i = 1; i <= daysInMonth; i++) {
+                        const day = i < 10 ? '0' + i : i;
+                        const option = document.createElement('option');
+                        option.value = day;
+                        option.textContent = i;
+                        daySelect.appendChild(option);
+                    }
+                } else {
+                    daySelect.disabled = true; // Deshabilitar si no hay mes o año
+                }
+            }
+
+            // 4. Función para actualizar el campo oculto que se envía al servidor
+            function updateHiddenDate() {
+                const year = yearSelect.value;
+                const month = monthSelect.value;
+                const day = daySelect.value;
+                hiddenDateInput.value = (year && month && day) ? `${year}-${month}-${day}` : '';
+            }
+
+            // 5. Asignar los eventos
+            yearSelect.addEventListener('change', updateMonths);
+            monthSelect.addEventListener('change', updateDays);
+            [daySelect, monthSelect, yearSelect].forEach(select => select.addEventListener('change', updateHiddenDate));
         });
     </script>
 </body>

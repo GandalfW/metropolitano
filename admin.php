@@ -337,48 +337,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        // Accion: Enviar Boletas
+                // Accion: Enviar Boletas
         elseif ($_POST['accion'] === 'enviar_boletas') {
             try {
                 $id_boleta_especifica = isset($_POST['id_boleta']) ? (int)$_POST['id_boleta'] : null;
-                
+
+                // Consulta base para localizar las boletas pendientes con datos del cliente y del sorteo
                 $sql = "
-                    SELECT b.id_boleta, b.codigo_boleta, c.email, c.nombre_completo, s.nombre as nombre_sorteo
+                    SELECT b.id_boleta, b.codigo_boleta, b.id_cliente, b.id_sorteo,
+                           c.email, c.nombre_completo,
+                           s.nombre as nombre_sorteo, s.fecha_fin,
+                           s.equipo_1, s.equipo_2, s.fecha_partido
                     FROM boletas b
                     JOIN clientes c ON b.id_cliente = c.id_cliente
                     JOIN sorteos s ON b.id_sorteo = s.id_sorteo
                     WHERE b.estado_envio = 'pendiente' AND c.email IS NOT NULL AND c.email != ''
                 ";
-                
+
+                $stmtPendientes = null;
+                $boletas = [];
+
                 if ($id_boleta_especifica) {
-                    $sql .= " AND b.id_boleta = :id_boleta";
-                    $stmtPendientes = $pdo->prepare($sql);
-                    $stmtPendientes->execute([':id_boleta' => $id_boleta_especifica]);
+                    // Si se eligió una boleta específica, se usa como referencia para agrupar
+                    $stmtRef = $pdo->prepare("SELECT id_cliente, id_sorteo FROM boletas WHERE id_boleta = ?");
+                    $stmtRef->execute([$id_boleta_especifica]);
+                    $ref = $stmtRef->fetch(PDO::FETCH_ASSOC);
+
+                    if ($ref) {
+                        $sql .= " AND b.id_cliente = :id_cliente AND b.id_sorteo = :id_sorteo ORDER BY b.fecha_generacion ASC";
+                        $stmtPendientes = $pdo->prepare($sql);
+                        $stmtPendientes->execute([':id_cliente' => $ref['id_cliente'], ':id_sorteo' => $ref['id_sorteo']]);
+                        $boletas = $stmtPendientes->fetchAll(PDO::FETCH_ASSOC);
+                    } else {
+                        $mensaje = "No se encontró la boleta seleccionada.";
+                    }
                 } else {
-                    $sql .= " ORDER BY b.fecha_generacion ASC LIMIT 1";
-                    $stmtPendientes = $pdo->query($sql);
+                    // Envío automático: se toma la boleta pendiente más antigua y se agrupan todas
+                    // las boletas pendientes de la misma persona y del mismo sorteo
+                    $stmtTodos = $pdo->query($sql . " ORDER BY b.fecha_generacion ASC");
+                    $primera = $stmtTodos->fetch(PDO::FETCH_ASSOC);
+
+                    if ($primera) {
+                        $sql .= " AND b.id_cliente = :id_cliente AND b.id_sorteo = :id_sorteo ORDER BY b.fecha_generacion ASC";
+                        $stmtPendientes = $pdo->prepare($sql);
+                        $stmtPendientes->execute([':id_cliente' => $primera['id_cliente'], ':id_sorteo' => $primera['id_sorteo']]);
+                        $boletas = $stmtPendientes->fetchAll(PDO::FETCH_ASSOC);
+                    }
                 }
-                
-                $boleta = $stmtPendientes->fetch(PDO::FETCH_ASSOC);
-                
-                if ($boleta) {
-                    $to = $boleta['email'];
-                    $subject = "Tu Boleta/Inscripcion para: " . $boleta['nombre_sorteo'];
-                    
-                    // Construcción del correo en formato HTML simulando un boleto
+
+                if (!empty($boletas)) {
+                    // Datos del grupo (misma persona y mismo sorteo)
+                    $grupo = $boletas[0];
+                    $to = $grupo['email'];
+                    $nombre_cliente = $grupo['nombre_completo'];
+                    $nombre_sorteo = $grupo['nombre_sorteo'];
+                    $total_boletas = count($boletas);
+
+                    // Recordar la fecha del sorteo en el correo
+                    $fecha_cierre = !empty($grupo['fecha_fin']) ? date('d/m/Y', strtotime($grupo['fecha_fin'])) : 'Fecha por confirmar';
+
+                    $subject = "Tus boletas para: " . $nombre_sorteo;
+
+                    // Construir la lista de códigos de boleta (todos los del grupo)
+                    $codigos_html = '';
+                    foreach ($boletas as $b) {
+                        $codigos_html .= "
+                            <div class='code'>" . htmlspecialchars($b['codigo_boleta']) . "</div><br>";
+                    }
+
+                    // Construcción del correo en formato HTML simulando los boletos agrupados
                     $message = "
                     <html>
                     <head>
-                        <title>Tu Boleta - Centro Comercial Metropolitano</title>
+                        <title>Tus Boletas - Centro Comercial Metropolitano</title>
                         <style>
                             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; padding: 20px; }
-                            .ticket { background-color: #ffffff; max-width: 500px; margin: 0 auto; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); overflow: hidden; border: 2px dashed #2596be; }
+                            .ticket { background-color: #ffffff; max-width: 520px; margin: 0 auto; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); overflow: hidden; border: 2px dashed #2596be; }
                             .ticket-header { background-color: #2596be; color: #ffffff; text-align: center; padding: 25px 20px; }
                             .ticket-header img { max-height: 55px; margin-bottom: 10px; }
                             .ticket-header h3 { margin: 10px 0 0 0; font-size: 18px; font-weight: 500; letter-spacing: 1px; }
                             .ticket-body { padding: 30px; text-align: center; }
                             .ticket-body h2 { color: #0F4C81; margin-top: 0; font-size: 24px; margin-bottom: 20px; }
-                            .code { font-family: monospace; font-size: 32px; font-weight: bold; color: #e74c3c; background-color: #fef2f2; padding: 15px 25px; border-radius: 8px; display: inline-block; margin: 20px 0; border: 2px solid #fecaca; letter-spacing: 4px; }
+                            .code { font-family: monospace; font-size: 26px; font-weight: bold; color: #e74c3c; background-color: #fef2f2; padding: 12px 20px; border-radius: 8px; display: inline-block; margin: 8px 0; border: 2px solid #fecaca; letter-spacing: 3px; }
+                            .date-box { background-color: #e0f2fe; color: #0c4a6e; padding: 12px 15px; border-radius: 8px; font-size: 15px; font-weight: 600; display: inline-block; margin: 15px 0; border: 1px solid #bae6fd; }
                             .ticket-footer { background-color: #f8fafc; padding: 15px; text-align: center; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; }
                         </style>
                     </head>
@@ -390,10 +431,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <h3>¡Participa y Gana!</h3>
                             </div>
                             <div class='ticket-body'>
-                                <h2>" . htmlspecialchars($boleta['nombre_sorteo']) . "</h2>
-                                <p style='font-size: 16px; color: #334155;'>Hola <strong>" . htmlspecialchars($boleta['nombre_completo']) . "</strong>,</p>
-                                <p style='color: #475569; margin-bottom: 5px;'>Este es tu código oficial de participación:</p>
-                                <div class='code'>" . htmlspecialchars($boleta['codigo_boleta']) . "</div>
+                                <h2>" . htmlspecialchars($nombre_sorteo) . "</h2>
+                                <p style='font-size: 16px; color: #334155;'>Hola <strong>" . htmlspecialchars($nombre_cliente) . "</strong>,</p>
+                                <p style='color: #475569; margin-bottom: 5px;'>Has acumulado <strong>" . $total_boletas . " boleta(s)</strong> para este evento. Estos son tus códigos oficiales de participación:</p>
+                                <div style='margin: 20px 0;'>" . $codigos_html . "</div>
+                                <div class='date-box'>📅 Fecha del sorteo / cierre de participación: " . $fecha_cierre . "</div>
                                 <p style='color: #475569; font-size: 16px;'>¡Mucha suerte!</p>
                             </div>
                             <div class='ticket-footer'>
@@ -403,25 +445,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </body>
                     </html>
                     ";
-                    
+
                     // Cabeceras necesarias para el envío de correos HTML
                     $headers = "MIME-Version: 1.0" . "\r\n";
                     $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
                     $headers .= "From: Centro Comercial Metropolitano <noreply@metropolitano.com>" . "\r\n";
-                    
+
                     // Intentar enviar el correo (Requiere servidor SMTP configurado en XAMPP o Hosting)
                     $exito = @mail($to, $subject, $message, $headers);
                     // NOTA: Para probar en local (XAMPP) sin un servidor de correo real configurado, descomenta la siguiente línea:
-                    // $exito = true; 
-                    
+                    // $exito = true;
+
+                    // Actualizar el estado de TODAS las boletas del grupo en un solo envío
                     $nuevo_estado = $exito ? 'enviado' : 'fallido';
-                    $stmtUpdate = $pdo->prepare("UPDATE boletas SET estado_envio = ?, fecha_envio = NOW() WHERE id_boleta = ?");
-                    $stmtUpdate->execute([$nuevo_estado, $boleta['id_boleta']]);
-                    
+
+                    $ids = array_column($boletas, 'id_boleta');
+                    $in = implode(',', array_fill(0, count($ids), '?'));
+                    $stmtUpdate = $pdo->prepare("UPDATE boletas SET estado_envio = ?, fecha_envio = NOW() WHERE id_boleta IN ($in)");
+                    $stmtUpdate->execute(array_merge([$nuevo_estado], $ids));
+
                     if ($exito) {
-                        $mensaje = "Boleta " . $boleta['codigo_boleta'] . " enviada con éxito a " . htmlspecialchars($to) . ".";
+                        $mensaje = "Se enviaron " . $total_boletas . " boleta(s) del evento '" . htmlspecialchars($nombre_sorteo) . "' a " . htmlspecialchars($to) . " en un solo correo.";
                     } else {
-                        $mensaje = "Error al enviar la boleta " . $boleta['codigo_boleta'] . " a " . htmlspecialchars($to) . ". (Marcada como fallida).";
+                        $mensaje = "Error al enviar las " . $total_boletas . " boleta(s) a " . htmlspecialchars($to) . ". (Marcadas como fallidas).";
                     }
                 } else {
                     $mensaje = "No se encontraron boletas pendientes válidas para enviar.";
